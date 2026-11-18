@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- brown-paper book cover -->
+  <rect width="64" height="64" rx="14" fill="#9c6b3f"/>
+  <!-- notebook page with a red margin line -->
+  <rect x="6" y="6" width="52" height="52" rx="6" fill="#fdfdfb"/>
+  <path d="M13 6v52" stroke="#e57a70" stroke-width="1.6"/>
+  <!-- armed stick soldier in blue ink -->
+  <g fill="none" stroke="#1f3fa6" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="19" r="6.5"/>
+    <path d="M24 26v15M24 41l-6.5 10M24 41l6.5 10M24 30l10 3"/>
+  </g>
+  <path d="M31 27.5h17v6H38.5l-1.8 6.5h-4.4l1.2-6.5H31z" fill="#1f3fa6"/>
+  <!-- the bullet -->
+  <circle cx="53" cy="30.5" r="2.6" fill="#b3262e"/>
+</svg>

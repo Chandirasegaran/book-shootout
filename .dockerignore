@@ -1,0 +1,7 @@
+target
+.git
+.claude
+web/game.wasm
+Dockerfile
+.dockerignore
+*.md

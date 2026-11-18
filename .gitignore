@@ -1,0 +1,5 @@
+/target
+# built by ./build.sh (and inside the Docker image)
+/web/game.wasm
+# local editor/tooling settings
+/.claude

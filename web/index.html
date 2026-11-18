@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#f6f8fc">
+  <title>Book Shootout</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+</head>
+<body>
+  <!-- Hand-drawn wobble for ink strokes -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="wobble">
+      <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2"/>
+    </filter>
+  </svg>
+
+  <div id="app">
+    <!-- HOME -->
+    <section id="home" class="screen active" aria-labelledby="title">
+      <div class="home-inner">
+        <div class="title-row">
+          <div class="title-doodle" id="titleDoodle" aria-hidden="true"></div>
+          <div>
+            <h1 id="title">Book Shootout</h1>
+            <p class="tagline">Flip the book. Draw your soldiers. Shoot first.</p>
+          </div>
+        </div>
+
+        <div id="resumeBox" class="resume" hidden>
+          <span>You were in room <b id="resumeCode"></b>.</span>
+          <button class="ink-btn small" id="resumeBtn">Rejoin</button>
+          <button class="link-btn" id="forgetBtn">Forget it</button>
+        </div>
+
+        <div class="menu">
+          <button class="ink-btn" id="localBtn">Play with a friend on this device</button>
+          <div class="bot-row">
+            <button class="ink-btn" id="botBtn">Play the computer</button>
+            <fieldset class="levels" aria-label="Computer level">
+              <label><input type="radio" name="level" value="easy"><span>Easy</span></label>
+              <label><input type="radio" name="level" value="medium" checked><span>Medium</span></label>
+              <label><input type="radio" name="level" value="hard"><span>Hard</span></label>
+            </fieldset>
+          </div>
+          <p class="hint level-hint" id="levelHint"></p>
+        </div>
+
+        <div class="online">
+          <h2>Play online with a room code</h2>
+          <label class="field">
+            <span>Your name</span>
+            <input id="nameInput" maxlength="16" autocomplete="nickname" placeholder="Write your name">
+          </label>
+          <button class="ink-btn" id="createBtn">Create a room</button>
+          <div class="join-row">
+            <label class="field code-field">
+              <span>Room code</span>
+              <input id="codeInput" maxlength="4" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCD">
+            </label>
+            <button class="ink-btn" id="joinBtn">Join</button>
+          </div>
+          <p class="hint" id="homeMsg" role="status"></p>
+        </div>
+
+        <button class="link-btn" id="rulesBtnHome">How to play</button>
+      </div>
+    </section>
+
+    <!-- LOBBY -->
+    <section id="lobby" class="screen" aria-labelledby="lobbyTitle">
+      <div class="lobby-inner">
+        <h2 id="lobbyTitle">Your room code</h2>
+        <div class="code-big" id="lobbyCode">----</div>
+        <p>Send this code to your friend. The game starts when they join.</p>
+        <div class="lobby-actions">
+          <button class="ink-btn" id="shareBtn">Share invite link</button>
+          <button class="link-btn" id="lobbyCancel">Cancel</button>
+        </div>
+        <p class="hint" id="lobbyMsg" role="status"><span class="dots">Waiting for your friend</span></p>
+      </div>
+    </section>
+
+    <!-- GAME -->
+    <section id="game" class="screen" aria-label="Game">
+      <header class="bar">
+        <button class="icon-btn" id="quitBtn" aria-label="Leave game">✕</button>
+        <div class="turn" id="turnLabel" aria-live="polite"></div>
+        <div class="bar-right">
+          <button class="icon-btn" id="rulesBtn" aria-label="How to play">?</button>
+          <button class="icon-btn" id="soundBtn" aria-label="Sound on">♪</button>
+        </div>
+      </header>
+
+      <main class="board" id="board">
+        <section class="side left" id="sideL">
+          <div class="side-head"><span class="pname"></span><span class="pmeta"></span></div>
+          <ol class="slots"></ol>
+        </section>
+
+        <div class="dock" id="dock">
+          <div class="book-wrap">
+          <button class="book" id="book" aria-label="Open the book">
+            <span class="cover"></span>
+            <span class="pages">
+              <span class="page pl"><span class="pnum" id="pnumL"></span></span>
+              <span class="page pr"><span class="pnum" id="pnumR"></span></span>
+              <span class="leaf"></span><span class="leaf"></span><span class="leaf"></span><span class="leaf"></span>
+            </span>
+            <span class="book-hint" id="bookHint">Tap to open</span>
+          </button>
+          <!-- easter egg: a previous owner's pencil scribbles on the left page -->
+          <button class="notes" id="notes" aria-label="Read what's scribbled on this page" hidden></button>
+          </div>
+          <p class="status" id="status" aria-live="polite"></p>
+          <div class="reacts" id="reacts" hidden></div>
+        </div>
+
+        <section class="side right" id="sideR">
+          <div class="side-head"><span class="pname"></span><span class="pmeta"></span></div>
+          <ol class="slots"></ol>
+        </section>
+      </main>
+    </section>
+  </div>
+
+  <canvas id="fx" aria-hidden="true"></canvas>
+
+  <!-- RESULT -->
+  <div class="overlay" id="result" hidden>
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+      <h2 id="resultTitle"></h2>
+      <p id="resultSub"></p>
+      <div class="card-actions">
+        <button class="ink-btn" id="againBtn">Play again</button>
+        <button class="link-btn" id="homeBtn">Back to menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RULES -->
+  <div class="overlay" id="rules" hidden>
+    <div class="card rules-card" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+      <h2 id="rulesTitle">How to play</h2>
+      <p>Each player has five soldiers, numbered 1, 3, 5, 7 and 9. On your turn, do one thing:</p>
+      <ul>
+        <li><b>Open the book.</b> Only the right-hand page counts, and it's always odd. Its last digit picks the soldier that gets the next drawing. Page 127 means soldier 7.</li>
+        <li><b>Shoot.</b> A soldier with a loaded bullet can shoot any enemy soldier, even one that's only half drawn. Tap your soldier, then tap the target.</li>
+      </ul>
+      <p>Each soldier is drawn in this order:</p>
+      <ol class="stages">
+        <li>Head</li><li>Body</li><li>Face</li><li>Gun</li><li>Bullet</li>
+      </ol>
+      <ul>
+        <li>A bullet can't be fired on the turn it's loaded. Wait one turn.</li>
+        <li>A soldier holds one bullet. After firing, land on its number again to reload.</li>
+        <li>A soldier that's shot out is gone. Landing on its number wastes your turn.</li>
+      </ul>
+      <p><b>Last player with a soldier standing wins.</b></p>
+      <div class="card-actions"><button class="ink-btn" id="rulesClose">Got it</button></div>
+    </div>
+  </div>
+
+  <!-- STICKY NOTE (easter egg) -->
+  <div class="overlay sticky-layer" id="sticky" hidden>
+    <div class="sticky" role="dialog" aria-modal="true" aria-labelledby="stickyTitle">
+      <span class="tape" aria-hidden="true"></span>
+      <p class="sticky-title" id="stickyTitle"></p>
+      <p class="sticky-text" id="stickyText"></p>
+      <button class="link-btn" id="stickyClose">Back to the game</button>
+    </div>
+  </div>
+
+  <!-- LEAVE CONFIRM -->
+  <div class="overlay" id="confirm" hidden>
+    <div class="card confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmText">
+      <h2 id="confirmTitle">Leave this game?</h2>
+      <p id="confirmText"></p>
+      <div class="card-actions">
+        <button class="ink-btn danger" id="confirmYes">Leave game</button>
+        <button class="ink-btn" id="confirmNo">Keep playing</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
