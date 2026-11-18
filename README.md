@@ -8,10 +8,39 @@ Play on one device (pass and play), against the computer (easy, medium or hard),
 
 ### With Docker
 
+The image is about 3 MB: a static Rust binary and the web files on `scratch`.
+
+```bash
+docker run -p 5002:5002 chandirasegaran/book-shootout
+```
+
+Or build it yourself:
+
 ```bash
 docker build -t book-shootout .
 docker run -p 5002:5002 book-shootout
 ```
+
+### On a server, with Docker Compose
+
+Copy `compose.yaml`, `Caddyfile` and `.env.example` to the server.
+
+Plain HTTP on port 5002:
+
+```bash
+docker compose up -d
+```
+
+HTTPS on your own domain: point the domain's DNS at the server, open ports 80 and 443, then:
+
+```bash
+cp .env.example .env    # set DOMAIN=your.domain
+docker compose --profile https up -d
+```
+
+Caddy gets and renews the certificate and passes the game's WebSocket through. HTTPS is worth it for online play: browsers only allow the "Share invite link" button on secure pages.
+
+The game container runs read-only, with no extra privileges, a 64 MB memory cap and rotated logs. Update with `docker compose pull && docker compose up -d`.
 
 ### From source
 

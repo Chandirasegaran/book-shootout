@@ -3,3 +3,4 @@
 /web/game.wasm
 # local editor/tooling settings
 /.claude
+/.env

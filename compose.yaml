@@ -1,0 +1,58 @@
+# Book Shootout on a server.
+#
+#   Plain HTTP on port 5002:
+#     docker compose up -d
+#
+#   HTTPS on your own domain (point the domain's DNS at this server first,
+#   then set DOMAIN in .env; Caddy gets and renews the certificate):
+#     docker compose --profile https up -d
+#
+# Copy .env.example to .env to change the port or set the domain.
+
+services:
+  game:
+    image: chandirasegaran/book-shootout:latest
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5002}:5002"
+    # The image is just a static binary and web files, so it needs nothing writable
+    # and no extra privileges.
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: HTTPS in front of the game. Only starts with --profile https.
+  caddy:
+    profiles: [https]
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on: [game]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  caddy_data:
+  caddy_config:

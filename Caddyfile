@@ -1,0 +1,7 @@
+# Used by the optional `caddy` service in compose.yaml (docker compose --profile https up -d).
+# Caddy gets an HTTPS certificate for DOMAIN and passes everything, including the
+# WebSocket at /ws, through to the game.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy game:5002
+}

@@ -1,4 +1,5 @@
-# Book Shootout: build the rules engine (WASM) and the server, then ship a small runtime image.
+# Book Shootout: build the rules engine (WASM) and a fully static server, then ship
+# them in an empty `scratch` image: no OS, no shell, just the binary and the web files.
 #
 #   docker build -t book-shootout .
 #   docker run -p 5002:5002 book-shootout
@@ -6,9 +7,11 @@
 # Then open http://localhost:5002
 
 # ---------- build ----------
-FROM rust:1-slim-bookworm AS build
+# Alpine's Rust toolchain targets musl, which links everything statically.
+FROM rust:1-alpine AS build
+RUN apk add --no-cache musl-dev \
+ && rustup target add wasm32-unknown-unknown
 WORKDIR /src
-RUN rustup target add wasm32-unknown-unknown
 
 # Cache dependencies: build once with the manifests and empty sources.
 COPY Cargo.toml Cargo.lock ./
@@ -33,12 +36,11 @@ COPY web web
 RUN cp target/wasm32-unknown-unknown/release/game_wasm.wasm web/game.wasm
 
 # ---------- run ----------
-FROM debian:bookworm-slim
-RUN useradd --system --uid 10001 game
-WORKDIR /app
-COPY --from=build /src/target/release/game-server /app/game-server
-COPY --from=build /src/web /app/web
-ENV PORT=5002 STATIC_DIR=/app/web
+FROM scratch
+COPY --from=build /src/target/release/game-server /game-server
+COPY --from=build /src/web /web
+ENV PORT=5002 STATIC_DIR=/web
 EXPOSE 5002
-USER game
-CMD ["/app/game-server"]
+# Unprivileged user; scratch has no /etc/passwd, so use a numeric id.
+USER 10001:10001
+ENTRYPOINT ["/game-server"]
