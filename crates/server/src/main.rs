@@ -23,7 +23,8 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use tower_http::services::ServeDir;
+use axum::http::{header::CACHE_CONTROL, HeaderValue};
+use tower_http::{services::ServeDir, set_header::SetResponseHeaderLayer};
 
 const CODE_CHARS: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ROOM_IDLE_LIMIT: Duration = Duration::from_secs(60 * 60);
@@ -133,7 +134,13 @@ async fn main() {
 
     let router = Router::new()
         .route("/ws", get(ws_upgrade))
-        .fallback_service(ServeDir::new(&static_dir))
+        // `no-cache` makes browsers check for a newer version on every load (unchanged
+        // files come back as a tiny 304), so players never mix old game code with new rules.
+        .fallback_service(
+            tower::ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::if_not_present(CACHE_CONTROL, HeaderValue::from_static("no-cache")))
+                .service(ServeDir::new(&static_dir)),
+        )
         .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await.expect("bind port");

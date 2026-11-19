@@ -24,7 +24,6 @@ const G = {
   you: 0,              // my seat in online games
   busy: false,         // an animation is playing
   pending: false,      // waiting for the server to answer my move
-  selected: null,      // slot index of my armed shooter
   queue: Promise.resolve(),
   botTimer: null,
   started: false,      // the first page has been opened this game
@@ -55,10 +54,8 @@ const nameOf = (seat) => {
   return G.names[seat] || `Player ${seat + 1}`;
 };
 const possessive = (seat) => (nameOf(seat) === "You" ? "Your" : `${nameOf(seat)}'s`);
-const canFire = (st, p, i) => {
-  const s = st.players[p].soldiers[i];
-  return s.alive && s.stage === 4 && s.loaded && s.loaded_turn < st.turn;
-};
+/** Slot of the current player's soldier that is aiming (its page came up while loaded), or null. */
+const aimingSlot = (st) => (st && st.winner == null ? st.aiming ?? null : null);
 const humanSeat = (seat) =>
   G.mode === "local" || (G.mode === "bot" && seat === 0) || (G.mode === "online" && seat === G.you);
 const canAct = () =>
@@ -100,14 +97,14 @@ function renderSoldier(seat, slot, anim = null) {
   const st = G.shown;
   const s = st.players[seat].soldiers[slot];
   const btn = soldierBtn(seat, slot);
-  const ready = s.alive && s.loaded && canFire(st, seat, slot) && st.current === seat && st.winner == null;
+  const aiming = s.alive && st.current === seat && aimingSlot(st) === slot;
   btn.classList.toggle("dead", !s.alive);
-  btn.classList.toggle("ready", ready);
-  btn.setAttribute("aria-label", describe(s, NUMS[slot]) + (ready ? ", ready to fire" : ""));
+  btn.classList.toggle("ready", aiming);
+  btn.setAttribute("aria-label", describe(s, NUMS[slot]) + (aiming ? ", aiming" : ""));
   btn.innerHTML =
     `<span class="num">${NUMS[slot]}</span>` +
     figureSVG(s, { mirror: isMirrored(seat), anim, label: describe(s, NUMS[slot]) }) +
-    (!s.alive ? `<span class="out-tag">out!</span>` : ready ? `<span class="ready-tag">ready!</span>` : "");
+    (!s.alive ? `<span class="out-tag">out!</span>` : aiming ? `<span class="ready-tag">aiming!</span>` : "");
 }
 
 function buildSides() {
@@ -148,10 +145,13 @@ function refreshControls() {
   // While an animation plays, label what's on screen rather than the state it is heading to.
   const st = G.shown || G.state;
   const me = canAct();
-  el.book.disabled = !me;
-  el.book.classList.toggle("waiting", !me);
+  const aim = aimingSlot(st);
+  // While a soldier is aiming, the book is closed until the shot is taken.
+  const canFlip = me && aim == null;
+  el.book.disabled = !canFlip;
+  el.book.classList.toggle("waiting", !canFlip);
   el.bookHint.hidden = G.started;
-  el.bookHint.textContent = me ? "Tap to open" : "";
+  el.bookHint.textContent = canFlip ? "Tap to open" : "";
 
   // turn label
   let label = "";
@@ -164,15 +164,14 @@ function refreshControls() {
   }
   el.turn.textContent = label;
 
-  // shooter / target affordances
+  // The aiming soldier is picked by the page, not the player; the player only picks a target.
   for (const seat of [0, 1]) {
     for (let i = 0; i < 5; i++) {
       const b = soldierBtn(seat, i);
       if (!b) continue;
-      const shooter = me && seat === st.current && canFire(st, seat, i);
-      const target = me && G.selected != null && seat !== st.current && st.players[seat].soldiers[i].alive;
-      b.classList.toggle("can-act", shooter || target);
-      b.classList.toggle("selected", me && seat === st.current && G.selected === i);
+      const target = me && aim != null && seat !== st.current && st.players[seat].soldiers[i].alive;
+      b.classList.toggle("can-act", target);
+      b.classList.toggle("selected", aim != null && seat === st.current && aim === i);
       b.classList.toggle("targetable", target);
     }
   }
@@ -247,7 +246,6 @@ function startGame(mode, state) {
   G.mode = mode;
   G.state = state;
   G.shown = clone(state);
-  G.selected = null;
   G.busy = false;
   G.pending = false;
   G.started = false;
@@ -273,7 +271,6 @@ function greet() {
 function act(action) {
   if (!canAct()) return;
   sound.unlock();
-  G.selected = null;
   if (G.mode === "online") {
     G.pending = true;
     refreshControls();
@@ -363,10 +360,17 @@ async function playEvent(ev, finalState) {
         setTimeout(() => el.book.classList.remove("bump"), 420);
         setStatus(`${pg}. ${possessive(p)} soldier ${n} is already out, so the turn is lost.`, p);
         break;
-      case "full":
-        sound.play("miss");
-        setStatus(`${pg}. ${possessive(p)} soldier ${n} already has its bullet.`, p);
+      case "aim": {
+        sh.aiming = o.slot;
+        renderSoldier(p, o.slot);
+        refreshControls();
+        sound.play("select");
+        fx.vibrate([20, 40, 20]);
+        if (humanSeat(p))
+          setStatus(`${pg}. Soldier <b>${n}</b> has a bullet! Tap an enemy soldier to shoot.`, p);
+        else setStatus(`${pg}. ${possessive(p)} soldier <b>${n}</b> has a bullet and is taking aim…`, p);
         break;
+      }
       case "drew": {
         const s = sh.players[p].soldiers[o.slot];
         s.stage += 1;
@@ -379,13 +383,10 @@ async function playEvent(ev, finalState) {
       case "loaded": {
         const s = sh.players[p].soldiers[o.slot];
         s.loaded = true;
-        s.loaded_turn = finalState.turn - 1;
-        sh.turn = finalState.turn;
-        sh.current = finalState.current;
         renderSoldier(p, o.slot, "bullet");
         sound.play("load");
         fx.vibrate(30);
-        setStatus(`${pg}. ${possessive(p)} soldier <b>${n}</b> is loaded. It can fire next turn.`, p);
+        setStatus(`${pg}. ${possessive(p)} soldier <b>${n}</b> is loaded. It fires when the page lands on ${n} again.`, p);
         break;
       }
     }
@@ -408,6 +409,7 @@ async function playEvent(ev, finalState) {
     fx.shake(el.board);
     sh.players[foe].soldiers[ev.target].alive = false;
     sh.players[p].soldiers[ev.from].loaded = false;
+    sh.aiming = null;
     shooterBtn.classList.remove("recoil", "selected");
     renderSoldier(foe, ev.target, "scribble");
     renderSoldier(p, ev.from);
@@ -476,6 +478,10 @@ function onBook() {
     if (G.state?.winner == null && !G.busy && !G.pending && G.mode !== "local") toast("Wait for your turn.");
     return;
   }
+  if (aimingSlot(G.state) != null) {
+    setStatus("Your soldier is aiming. Tap an enemy soldier to shoot first.", G.state.current);
+    return;
+  }
   act({ type: "flip", page: 1 });
 }
 
@@ -483,27 +489,19 @@ function onSoldier(seat, slot) {
   sound.unlock();
   if (!canAct()) return;
   const st = G.state;
-  if (seat === st.current) {
-    if (canFire(st, seat, slot)) {
-      G.selected = G.selected === slot ? null : slot;
-      if (G.selected != null) {
-        sound.play("select");
-        setStatus(`Soldier ${NUMS[slot]} is aiming. Tap an enemy soldier to shoot.`, seat);
-      } else setStatus("Tap the book, or pick a loaded soldier to shoot.", seat);
-      refreshControls();
-    } else if (G.selected != null) {
-      G.selected = null;
-      refreshControls();
-    }
+  const aim = aimingSlot(st);
+  if (aim == null) {
+    // No free shooting: a soldier fires only when the page lands on its number.
+    if (seat === st.current && st.players[seat].soldiers[slot].loaded)
+      setStatus(`Soldier ${NUMS[slot]} fires when the page lands on ${NUMS[slot]}. Tap the book.`, seat);
     return;
   }
-  if (G.selected == null) {
-    const any = [0, 1, 2, 3, 4].some((i) => canFire(st, st.current, i));
-    setStatus(any ? "First tap your loaded soldier, then the soldier you want to shoot." : "You need a loaded soldier to shoot. Tap the book.", st.current);
+  if (seat === st.current) {
+    setStatus(`Soldier ${NUMS[aim]} is aiming. Tap an enemy soldier to shoot.`, seat);
     return;
   }
   if (!st.players[seat].soldiers[slot].alive) return;
-  act({ type: "shoot", from: G.selected, target: slot });
+  act({ type: "shoot", from: aim, target: slot });
 }
 
 el.book.addEventListener("click", onBook);
@@ -511,10 +509,6 @@ addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     if (!el.rules.hidden) return (el.rules.hidden = true);
     if (!$("sticky").hidden) return closeSticky();
-    if (G.selected != null) {
-      G.selected = null;
-      refreshControls();
-    }
   }
 });
 
@@ -680,9 +674,9 @@ $("botBtn").addEventListener("click", async () => {
 
 // computer level
 const LEVEL_HINT = {
-  easy: "Sometimes forgets to shoot, and aims anywhere.",
-  medium: "Shoots whenever it can.",
-  hard: "Aims at your biggest threat, and gets lucky with the book.",
+  easy: "Shoots at random.",
+  medium: "Shoots your most-drawn soldier.",
+  hard: "Shoots your biggest threat, and gets lucky with the book.",
 };
 function setLevel(level) {
   if (!LEVEL_HINT[level]) level = "medium";
@@ -838,7 +832,7 @@ soundBtn.addEventListener("click", () => {
 syncSoundBtn();
 
 // ---------------- boot ----------------
-$("titleDoodle").innerHTML = figureSVG({ stage: 4, loaded: true, alive: true, loaded_turn: 0 }, { label: "A stick soldier with a gun" });
+$("titleDoodle").innerHTML = figureSVG({ stage: 4, loaded: true, alive: true }, { label: "A stick soldier with a gun" });
 try { $("nameInput").value = localStorage.getItem("bs.name") || ""; } catch {}
 const roomParam = new URLSearchParams(location.search).get("room");
 if (roomParam) {

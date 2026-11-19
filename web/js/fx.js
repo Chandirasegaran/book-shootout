@@ -41,6 +41,10 @@ export function tracer(a, b, color) {
     const dur = reduced ? 0.01 : 0.22;
     let t = 0;
     let done = false;
+    // Animation frames pause in background tabs; never let the game wait on them.
+    setTimeout(() => {
+      if (!done) { done = true; resolve(); }
+    }, dur * 1000 + 80);
     add({
       step(dt) {
         t += dt;

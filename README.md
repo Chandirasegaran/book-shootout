@@ -70,19 +70,20 @@ Rooms close after an hour with no activity. If a player's connection drops, they
 
 | Level | How it plays |
 |---|---|
-| Easy | Sometimes forgets to shoot, and aims at a random soldier. |
-| Medium | Shoots whenever it can, at your most-drawn soldier. |
+| Easy | Shoots a random soldier. |
+| Medium | Shoots your most-drawn soldier. |
 | Hard | Shoots your biggest threat first, and about half the time peeks at two pages and opens the better one. |
 
-In 400 computer-vs-computer games each: Hard beats Medium 81% of the time, Medium beats Easy 90%.
+In 400 computer-vs-computer games each: Hard beats Medium 85% of the time, Medium beats Easy 69%.
 
 ## Rules
 
 - Each player has soldiers 1, 3, 5, 7 and 9.
-- On your turn either **open the book** or **shoot**.
-- Only the right-hand page counts, and it's always odd. Its last digit picks the soldier that gets its next drawing: head, body, face, gun, bullet.
-- A soldier holds one bullet, and can't fire on the turn it was loaded.
-- Shoot any enemy soldier, even a half-drawn one. After firing, land on that number again to reload.
+- On your turn, open the book. Only the right-hand page counts, and it's always odd. Its last digit picks one of your soldiers.
+- That soldier gets its next step: head, body, face, gun, bullet.
+- If it already has a bullet, it fires: pick any enemy soldier to shoot, even a half-drawn one. The next landing on that number reloads it.
+- A soldier only fires when the page lands on its number.
 - A soldier that's out is gone for good; landing on its number wastes the turn.
+- Last player with a soldier standing wins.
 
 There may be something scribbled in the book, too.
