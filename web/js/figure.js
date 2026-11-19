@@ -23,6 +23,14 @@ export function figureSVG(s, { mirror = false, anim = null, label = "" } = {}) {
   if (s.loaded) g += `<path class="bullet${pop("bullet")}" d="M88 38.5h6.5a3.2 3.2 0 0 1 0 6.4H88z"/>`;
 
   let fig = `<g class="figure">${g}</g>`;
+  // Crosshair centred on the body; only shown (by CSS) when this soldier can be shot.
+  if (s.alive)
+    fig +=
+      `<g class="crosshair" aria-hidden="true">` +
+      `<circle class="ring" cx="40" cy="46" r="33"/>` +
+      `<path class="ticks" d="M40 7v11M40 74v11M3 46h10M67 46h10"/>` +
+      `<circle class="dot-c" cx="40" cy="46" r="1.6"/>` +
+      `</g>`;
   if (!s.alive)
     fig += `<path class="scribble${a("scribble")}" pathLength="1" d="M14 14L84 26L12 38L86 50L14 62L84 74L20 86"/>`;
   if (mirror) fig = `<g transform="translate(100 0) scale(-1 1)">${fig}</g>`;

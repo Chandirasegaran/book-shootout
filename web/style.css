@@ -210,14 +210,21 @@ h1 {
 .soldier.selected .gun { animation: aim .8s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 10% 60%; }
 @keyframes aim { to { transform: rotate(-6deg); } }
 .soldier.targetable { cursor: crosshair; }
-.soldier.targetable::after {
-  content: ""; position: absolute; inset: 8% 22%; pointer-events: none;
-  border: 2.5px dashed var(--red); border-radius: 50%;
-  animation: crosshair 1.6s linear infinite;
-}
-.side.right .soldier.targetable::after, .side.left .soldier.targetable::after { border-color: color-mix(in srgb, var(--graphite) 70%, var(--red)); }
 .soldier.targetable:hover { background: rgba(179, 38, 46, .08); }
-@keyframes crosshair { to { transform: rotate(360deg); } }
+/* Crosshair drawn inside the soldier's SVG, so it is always round and centred on the body. */
+.crosshair { display: none; pointer-events: none; }
+.soldier.targetable .crosshair {
+  display: block;
+  transform-box: fill-box; transform-origin: center;
+  animation: lockon 1.4s ease-in-out infinite;
+}
+.crosshair .ring { fill: none; stroke: var(--red); stroke-width: 2; stroke-dasharray: 6 5; opacity: .75; }
+.crosshair .ticks { fill: none; stroke: var(--red); stroke-width: 2.2; stroke-linecap: round; opacity: .75; }
+.crosshair .dot-c { fill: var(--red); opacity: .75; }
+.soldier.targetable:hover .crosshair .ring,
+.soldier.targetable:hover .crosshair .ticks,
+.soldier.targetable:focus-visible .crosshair .ring { opacity: 1; stroke-width: 2.6; }
+@keyframes lockon { 0%, 100% { transform: scale(1); } 50% { transform: scale(.9); } }
 .recoil .gun { animation: recoil .25s ease-out; transform-box: fill-box; transform-origin: 0% 60%; }
 @keyframes recoil { 30% { transform: translateX(-6px) rotate(-14deg); } }
 
